@@ -1,54 +1,73 @@
 const { GraphQLServer } = require("graphql-yoga");
+const { prisma } = require("./prisma/client");
 
 const typeDefs = `
 type Book {
-    id: Int!
+    id: ID!
     title: String!
     pages: Int
     chapters: Int
+    authors: [Author!]!
+}
+
+type Author {
+    id: ID!
+    name: String!
+    books: [Book!]!
 }
 
 type Query {
   books: [Book!]
-  book(id: Int!): Book
+  book(id: ID!): Book
+  authors: [Author!]
+}
+
+type Mutation {
+  book(title: String!, authors: [String!]!, pages: Int, chapters: Int): Book!
 }
 `;
 
-const books = [
-  {
-    id: 1,
-    title: "Fullstack tutorial for GraphQL",
-    pages: 356
-  },
-  {
-    id: 2,
-    title: "Introductory tutorial to GraphQL",
-    chapters: 10
-  },
-  {
-    id: 3,
-    title: "GraphQL Schema Design for the Enterprise",
-    pages: 550,
-    chapters: 25
-  }
-];
-
 const resolvers = {
-  Query: {
-    books: (root, args, context, info) => books,
-    book: (root, args, context, info) => books.find(e => e.id === args.id)
-  },
+  Mutation: {
+    book: async (root, args, context, info) => {
+      let authorsToCreate = [];
+      let authorsToConnect = [];
 
+      for (const authorName of args.authors) {
+        const author = await context.prisma.author({ name: authorName });
+        if (author) authorsToConnect.push(author);
+        else authorsToCreate.push({ name: authorName });
+      }
+
+      return context.prisma.createBook({
+        title: args.title,
+        pages: args.pages,
+        chapters: args.chapters,
+        authors: {
+          create: authorsToCreate,
+          connect: authorsToConnect
+        }
+      });
+    }
+  },
+  Query: {
+    books: (root, args, context, info) => context.prisma.books(),
+    book: (root, args, context, info) => context.prisma.book({ id: args.id }),
+    authors: (root, args, context, info) => context.prisma.authors()
+  },
   Book: {
-    id: parent => parent.id,
-    title: parent => parent.title,
-    pages: parent => parent.pages,
-    chapters: parent => parent.chapters
+    authors: (parent, args, context) =>
+      context.prisma.book({ id: parent.id }).authors()
+  },
+  Author: {
+    books: (parent, args, context) =>
+      context.prisma.author({ id: parent.id }).books()
   }
 };
 
 const server = new GraphQLServer({
   typeDefs,
-  resolvers
+  resolvers,
+  context: { prisma }
 });
 server.start(() => console.log(`Server is running on http://localhost:4000`));

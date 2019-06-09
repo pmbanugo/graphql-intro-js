@@ -1,0 +1,13 @@
+type Book {
+    id: ID! @id
+    title: String!
+    pages: Int
+    chapters: Int
+    authors: [Author!]!
+}
+
+type Author {
+    id: ID! @id
+    name: String! @unique
+    books: [Book!]!
+}

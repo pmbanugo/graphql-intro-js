@@ -1,4 +1,5 @@
 # The HTTP endpoint for the demo server on Prisma Cloud
+#endpoint: ""
 endpoint: ""
 
 # Points to the file that contains your datamodel

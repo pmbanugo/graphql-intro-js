@@ -1,2 +1,4 @@
 node_modules/
 src/prisma/client
+
+package-lock.json

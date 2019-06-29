@@ -25,9 +25,27 @@ type Query {
 type Mutation {
   book(title: String!, authors: [String!]!, pages: Int, chapters: Int): Book!
 }
+
+type Subscription {
+  newBook(containsTitle: String): Book!
+}
 `;
 
 const resolvers = {
+  Subscription: {
+    newBook: {
+      subscribe: (parent, args, context, info) => {
+        let filter = { mutation_in: ["CREATED"] };
+        if (args.containsTitle)
+          filter.node = { title_contains: args.containsTitle };
+
+        return context.prisma.$subscribe.book(filter).node();
+      },
+      resolve: payload => {
+        return payload;
+      }
+    }
+  },
   Mutation: {
     book: async (root, args, context, info) => {
       let authorsToCreate = [];
